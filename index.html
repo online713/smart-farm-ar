@@ -155,6 +155,46 @@
       }
 
       // ------------------------------------------------------------------
+      // 2本指スワイプでカメラを移動する（横=左右移動、縦=前後移動）
+      // ------------------------------------------------------------------
+      AFRAME.registerComponent('twofinger-pan', {
+        schema: { speed: { default: 0.01 } },
+        init: function () {
+          this.lastCenter = null;
+          const getCenter = (touches) => ({
+            x: (touches[0].pageX + touches[1].pageX) / 2,
+            y: (touches[0].pageY + touches[1].pageY) / 2
+          });
+          window.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+              this.lastCenter = getCenter(e.touches);
+            }
+          });
+          window.addEventListener('touchmove', (e) => {
+            if (e.touches.length !== 2 || !this.lastCenter) return;
+            const center = getCenter(e.touches);
+            const dx = center.x - this.lastCenter.x;
+            const dy = center.y - this.lastCenter.y;
+            this.lastCenter = center;
+
+            // カメラの向きに合わせた「左右」「前後」方向ベクトル（水平面のみ）
+            const quat = this.el.object3D.quaternion;
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quat);
+            forward.y = 0; forward.normalize();
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(quat);
+            right.y = 0; right.normalize();
+
+            const pos = this.el.object3D.position;
+            pos.addScaledVector(right, dx * this.data.speed);
+            pos.addScaledVector(forward, -dy * this.data.speed);
+          });
+          window.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) this.lastCenter = null;
+          });
+        }
+      });
+
+      // ------------------------------------------------------------------
       // ピンチ操作で圃場全体（farm-root）を拡大縮小する
       // ------------------------------------------------------------------
       AFRAME.registerComponent('pinch-scale', {
@@ -300,7 +340,7 @@
       <a-assets timeout="5000"></a-assets>
 
       <!-- 通路視点。スマホを傾けると視点も動く（magicWindowTrackingEnabled） -->
-      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true"></a-entity>
+      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true" twofinger-pan></a-entity>
 
       <a-light light="type: ambient; color: #FFFFFF; intensity: 0.7"></a-light>
       <a-light
