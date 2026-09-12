@@ -6,8 +6,6 @@
     <title>茂原ベース スマート農園 WebAR管理プロトタイプ</title>
 
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <!-- AR.js（マーカーベースAR）: カメラ映像に3Dシーンを合成する -->
-    <script src="https://cdn.jsdelivr.net/npm/@ar-js-org/ar.js@3.4.6/aframe/build/aframe-ar.js"></script>
 
     <script>
       // ------------------------------------------------------------------
@@ -142,10 +140,25 @@
       });
 
       // ------------------------------------------------------------------
+      // カメラ映像をフルスクリーン背景として表示する（マーカー無し・簡易パススルー版）
+      // ------------------------------------------------------------------
+      async function initCameraPassthrough() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false
+          });
+          document.querySelector('#ar-video').srcObject = stream;
+        } catch (err) {
+          console.error('カメラ映像の取得に失敗しました', err);
+        }
+      }
+
+      // ------------------------------------------------------------------
       // ピンチ操作で圃場全体（farm-root）を拡大縮小する
       // ------------------------------------------------------------------
       AFRAME.registerComponent('pinch-scale', {
-        schema: { min: { default: 0.05 }, max: { default: 0.6 } },
+        schema: { min: { default: 0.3 }, max: { default: 3 } },
         init: function () {
           this.initialDist = 0;
           this.initialScale = this.el.object3D.scale.x || 1;
@@ -258,22 +271,36 @@
       }
 
       document.addEventListener('DOMContentLoaded', initFarmScene);
+      document.addEventListener('DOMContentLoaded', initCameraPassthrough);
     </script>
   </head>
 
-  <body style="margin: 0; overflow: hidden;">
+  <body style="margin: 0; overflow: hidden; background: #000;">
+    <!--
+      簡易パススルーAR（マーカー・GPSなし版）:
+      背面カメラの映像を全画面の<video>として敷き、その上に透明背景の
+      A-Frameシーンを重ねて3Dオブジェクトを合成表示するだけの構成。
+      「マーカーが常に検出され続けている」のと同じ状態を疑似的に作っている。
+
+      本番運用では、圃場入口の看板などに対応させた画像マーカー（AR.js等）や、
+      屋外の広い範囲をカバーできるGPS座標ベースのアンカリング（gps-camera /
+      gps-entity-place 等）に置き換えることを想定。
+    -->
+    <video id="ar-video" autoplay muted playsinline
+      style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;"></video>
+
     <a-scene
       vr-mode-ui="enabled: false"
       renderer="antialias: true; alpha: true; physicallyCorrectLights: true"
       shadow="type: pcfsoft"
       embedded
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+      style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: transparent;"
     >
       <!-- 3Dアセット置き場：将来ここに畝ごとの.glbモデルを登録していく -->
       <a-assets timeout="5000"></a-assets>
 
-      <!-- AR.js用カメラ（マーカーの動きに追従。look-controls等は不要） -->
-      <a-entity camera></a-entity>
+      <!-- 通路視点。スマホを傾けると視点も動く（magicWindowTrackingEnabled） -->
+      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true"></a-entity>
 
       <a-light light="type: ambient; color: #FFFFFF; intensity: 0.7"></a-light>
       <a-light
@@ -281,19 +308,10 @@
         position="-2 5 2"
       ></a-light>
 
-      <!--
-        マーカー：デモ用にAR.js標準の「Hiroマーカー」を使用。
-        実運用では preset="hiro" を外し、圃場入口の看板などに合わせた
-        カスタムパターン（type="pattern" url="patterns/field-marker.patt"）
-        に差し替える。屋外の広い範囲で使うなら gps-camera / gps-entity-place
-        によるロケーションベースARへの切り替えも検討。
-      -->
-      <a-marker preset="hiro">
-        <!-- ピンチで拡大縮小できる圃場全体のルート。中身はJSONデータから自動生成 -->
-        <a-entity id="farm-root" pinch-scale scale="0.15 0.15 0.15">
-          <a-entity shadow-ground="width: 10; depth: 10" position="0 0 -4.5"></a-entity>
-        </a-entity>
-      </a-marker>
+      <!-- ピンチで拡大縮小できる圃場全体のルート。中身はJSONデータから自動生成 -->
+      <a-entity id="farm-root" pinch-scale scale="1 1 1">
+        <a-entity shadow-ground="width: 10; depth: 10" position="0 0 -4.5"></a-entity>
+      </a-entity>
     </a-scene>
   </body>
 </html>
