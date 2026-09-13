@@ -395,8 +395,9 @@
             right.y = 0; right.normalize();
 
             const pos = this.el.object3D.position;
-            pos.addScaledVector(right, dx * this.data.speed);
-            pos.addScaledVector(forward, -dy * this.data.speed);
+            // Googleマップ等と同じ「指でつまんで動かす」向き（コンテンツが指に追従する）
+            pos.addScaledVector(right, -dx * this.data.speed);
+            pos.addScaledVector(forward, dy * this.data.speed);
           }, { passive: false });
           window.addEventListener('touchend', (e) => {
             if (e.touches.length < 2) this.lastCenter = null;
