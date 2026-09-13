@@ -21,7 +21,7 @@
       //    パスが変わるため使用しない。
       // ------------------------------------------------------------------
       const FIELD_DEPTH = 7.0;                 // 畝の奥行き(m)
-      const ITEM_Z_POSITIONS = [2.0, 0.5, -1.0, -2.5]; // 通路側から奥に向けた配置点
+      const ITEM_Z_POSITIONS = [0]; // 畝1本につき1箇所だけ配置
 
       // ------------------------------------------------------------------
       // 作物ごとの生育タイムライン（現状はWikimedia Commonsのフリー素材で代用）。
@@ -299,22 +299,17 @@
           });
         },
         updateScales: function () {
-          const g = Math.min(Math.max(this.data.growth, 0), 1);
+          // サイズは生育度によらず固定。時系列スライダーでは「写真の切り替え」だけで表現する
+          const ABOVE_SIZE = 0.5;
+          const BELOW_SIZE = 0.3;
 
           if (this.aboveSprite) {
-            // 地上部の茎葉：土の表面(y≈0.1)から生えて、収穫期にかけて大きく育つ
-            const s = 0.25 + g * 0.55;
-            this.aboveSprite.scale.set(s, s, 1);
-            this.aboveSprite.position.set(0, 0.08 + s * 0.4, 0);
+            this.aboveSprite.scale.set(ABOVE_SIZE, ABOVE_SIZE, 1);
+            this.aboveSprite.position.set(0, 0.08 + ABOVE_SIZE * 0.4, 0);
           }
           if (this.belowSprite) {
-            // 地下部の芋・さや：土の中(y=0〜0.1)にとどめつつ、サイズだけを
-            // 後半に急激に膨らませる（生育カーブをg^2で表現）ことで
-            // 「土からせり出してくる」見え方にする
-            const gg = g * g;
-            const s = 0.06 + gg * 0.42;
-            this.belowSprite.scale.set(s, s * 0.75, 1);
-            this.belowSprite.position.set(0, 0.05 + s * 0.05, 0);
+            this.belowSprite.scale.set(BELOW_SIZE, BELOW_SIZE * 0.75, 1);
+            this.belowSprite.position.set(0, 0.05 + BELOW_SIZE * 0.05, 0);
           }
         },
         loadRoundTexture: function (url) {
