@@ -23,84 +23,127 @@
       const FIELD_DEPTH = 7.0;                 // 畝の奥行き(m)
       const ITEM_Z_POSITIONS = [2.0, 0.5, -1.0, -2.5]; // 通路側から奥に向けた配置点
 
+      // 作物ごとの地上部・地下部の写真（Wikimedia Commonsのフリー素材）と収穫までの目安日数
+      const CROP_PHOTOS = {
+        potato: {
+          above: 'https://upload.wikimedia.org/wikipedia/commons/1/12/Potato_plant.jpg',
+          below: 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Potatoes.jpg',
+          daysToHarvest: 95
+        },
+        peanut: {
+          above: 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Peanut_9417.jpg',
+          below: 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Peanuts_%28Arachis_hypogaea%29_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_peeled.jpg',
+          daysToHarvest: 135
+        },
+        sweetpotato: {
+          above: 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Ipomoea_batatas_leaf.jpg',
+          below: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Sweet_potatoes.JPG',
+          daysToHarvest: 140
+        }
+      };
+
       const ridgeData = [
         {
           ridgeNo: 1, posX: -3.75,
           crop: "ジャガイモ", variety: "デジマ",
           plantedDate: "2026-03-10", status: "収穫間近",
           soilColor: "#3E2723", labelColor: "#D81B60",
-          animDurMs: 6000,
+          photos: CROP_PHOTOS.potato,
           // 将来.glbへ差し替える場合は modelUrl に相対パスを入れるだけでよい（例: "models/potato-degima.glb"）
-          modelUrl: null, modelId: "model-potato-degima", modelScale: "1 1 1",
-          fallback: { tag: "a-sphere", attrs: { color: "#FBC02D", radius: "0.18" } }
+          modelUrl: null, modelId: "model-potato-degima", modelScale: "1 1 1"
         },
         {
           ridgeNo: 2, posX: -2.25,
           crop: "ジャガイモ", variety: "ニシユタカ",
           plantedDate: "2026-03-10", status: "生育中",
           soilColor: "#3E2723", labelColor: "#F57F17",
-          animDurMs: 6000,
-          modelUrl: null, modelId: "model-potato-nishiyutaka", modelScale: "1 1 1",
-          fallback: { tag: "a-sphere", attrs: { color: "#FFF176", radius: "0.18" } }
+          photos: CROP_PHOTOS.potato,
+          modelUrl: null, modelId: "model-potato-nishiyutaka", modelScale: "1 1 1"
         },
         {
           ridgeNo: 3, posX: -0.75,
           crop: "落花生（大粒）", variety: "おおまさりネオ",
           plantedDate: "2026-05-10", status: "開花期",
           soilColor: "#212121", labelColor: "#2E7D32",
-          animDurMs: 7000,
-          modelUrl: null, modelId: "model-peanut-oomasari", modelScale: "1 1 1",
-          fallback: { tag: "a-cylinder", attrs: { color: "#A5D6A7", radius: "0.18", height: "0.25" } }
+          photos: CROP_PHOTOS.peanut,
+          modelUrl: null, modelId: "model-peanut-oomasari", modelScale: "1 1 1"
         },
         {
           ridgeNo: 4, posX: 0.75,
           crop: "落花生", variety: "千葉半立",
           plantedDate: "2026-05-10", status: "子房柄伸長中",
           soilColor: "#212121", labelColor: "#388E3C",
-          animDurMs: 7000,
-          modelUrl: null, modelId: "model-peanut-chibahandachi", modelScale: "1 1 1",
-          fallback: { tag: "a-cylinder", attrs: { color: "#81C784", radius: "0.16", height: "0.25" } }
+          photos: CROP_PHOTOS.peanut,
+          modelUrl: null, modelId: "model-peanut-chibahandachi", modelScale: "1 1 1"
         },
         {
           ridgeNo: 5, posX: 2.25,
           crop: "サツマイモ", variety: "早植え株",
           plantedDate: "2026-05-02", status: "蔓繁茂",
           soilColor: "#3E2723", labelColor: "#880E4F",
-          animDurMs: 8000,
-          modelUrl: null, modelId: "model-sweetpotato-early", modelScale: "1 1 1",
-          fallback: { tag: "a-sphere", attrs: { color: "#AD1457", radius: "0.2", scale: "0.6 1.1 0.6" } }
+          photos: CROP_PHOTOS.sweetpotato,
+          modelUrl: null, modelId: "model-sweetpotato-early", modelScale: "1 1 1"
         },
         {
           ridgeNo: 6, posX: 3.75,
           crop: "サツマイモ", variety: "遅植え株",
           plantedDate: "2026-05-20", status: "活着期",
           soilColor: "#3E2723", labelColor: "#C2185B",
-          animDurMs: 8000,
-          modelUrl: null, modelId: "model-sweetpotato-late", modelScale: "1 1 1",
-          fallback: { tag: "a-sphere", attrs: { color: "#C2185B", radius: "0.15", scale: "0.6 1.0 0.6" } }
+          photos: CROP_PHOTOS.sweetpotato,
+          modelUrl: null, modelId: "model-sweetpotato-late", modelScale: "1 1 1"
         }
       ];
 
       // ------------------------------------------------------------------
-      // 日本語看板コンポーネント（変更なし・微調整のみ）
+      // 生育度合い・収穫予測日の計算（定植日 + 作物ごとの目安日数）
+      // ------------------------------------------------------------------
+      function formatDate(d) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
+
+      function computeGrowth(ridge) {
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        const plantedMs = new Date(ridge.plantedDate).getTime();
+        const nowMs = Date.now();
+        const daysToHarvest = ridge.photos.daysToHarvest;
+        const daysSince = (nowMs - plantedMs) / DAY_MS;
+        const progress = Math.min(Math.max(daysSince / daysToHarvest, 0), 1);
+        const harvestMs = plantedMs + daysToHarvest * DAY_MS;
+        const daysUntilHarvest = Math.ceil((harvestMs - nowMs) / DAY_MS);
+        const harvestDateLabel = formatDate(new Date(harvestMs));
+        const harvestLabel = daysUntilHarvest > 0
+          ? `収穫予測 ${harvestDateLabel}（あと${daysUntilHarvest}日）`
+          : `収穫適期 ${harvestDateLabel}（収穫可能）`;
+        return {
+          progress,
+          harvestDateLabel,
+          daysUntilHarvest,
+          harvestLabel
+        };
+      }
+
+      // ------------------------------------------------------------------
+      // 日本語看板コンポーネント（品種／ステータス／収穫予測＋生育バーの3段組み）
       // ------------------------------------------------------------------
       AFRAME.registerComponent('jp-text', {
         schema: {
           title: { type: 'string', default: '' },
           subtitle: { type: 'string', default: '' },
+          harvest: { type: 'string', default: '' },
+          progress: { type: 'number', default: 0 },
           color: { type: 'string', default: '#333333' }
         },
         init: function () {
           const canvas = document.createElement('canvas');
           canvas.width = 512;
-          canvas.height = 256;
+          canvas.height = 300;
           const ctx = canvas.getContext('2d');
 
           ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
           if (ctx.roundRect) {
-            ctx.roundRect(10, 10, 492, 236, 20);
+            ctx.roundRect(10, 10, 492, 280, 20);
           } else {
-            ctx.fillRect(10, 10, 492, 236);
+            ctx.fillRect(10, 10, 492, 280);
           }
           ctx.fill();
           ctx.lineWidth = 8;
@@ -108,17 +151,34 @@
           ctx.stroke();
 
           ctx.fillStyle = this.data.color;
-          ctx.font = 'bold 34px "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif';
+          ctx.font = 'bold 32px "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(this.data.title, 256, 90);
+          ctx.fillText(this.data.title, 256, 75);
 
           ctx.fillStyle = '#444444';
-          ctx.font = '22px "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif';
-          ctx.fillText(this.data.subtitle, 256, 165);
+          ctx.font = '21px "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif';
+          ctx.fillText(this.data.subtitle, 256, 130);
+
+          ctx.fillStyle = '#00695C';
+          ctx.font = 'bold 19px "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif';
+          ctx.fillText(this.data.harvest, 256, 170);
+
+          // 生育度合いバー
+          const barX = 56, barY = 200, barW = 400, barH = 22;
+          ctx.fillStyle = '#E0E0E0';
+          if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 11); ctx.fill(); }
+          else { ctx.fillRect(barX, barY, barW, barH); }
+          const p = Math.min(Math.max(this.data.progress, 0), 1);
+          ctx.fillStyle = this.data.color;
+          if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(barX, barY, barW * p, barH, 11); ctx.fill(); }
+          else { ctx.fillRect(barX, barY, barW * p, barH); }
+          ctx.fillStyle = '#333333';
+          ctx.font = '16px "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif';
+          ctx.fillText(`生育度 ${Math.round(p * 100)}%`, 256, barY + barH + 26);
 
           const texture = new THREE.CanvasTexture(canvas);
           const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-          const geometry = new THREE.PlaneGeometry(1.4, 0.7);
+          const geometry = new THREE.PlaneGeometry(1.4, 0.82);
           const mesh = new THREE.Mesh(geometry, material);
           this.el.setObject3D('mesh', mesh);
         }
@@ -136,6 +196,88 @@
           mesh.rotation.x = -Math.PI / 2;
           mesh.receiveShadow = true;
           this.el.setObject3D('mesh', mesh);
+        }
+      });
+
+      // ------------------------------------------------------------------
+      // 写真ベースの作物ビルボード（地上部＋地下部）
+      // 円柱・球体などのプリミティブ図形の代わりに、実際の作物写真を
+      // 常にカメラを向く板（スプライト）として表示する。
+      // 生育度合い(0〜1)に応じて、地上部は徐々に育ち、地下部（芋・さや）は
+      // 後半になるほど大きく膨らむようにスケールを変化させる。
+      // 将来的に本物の.glbモデルに差し替える場合は、呼び出し側でこの
+      // コンポーネントの代わりに gltf-model を使う分岐に切り替えればよい。
+      // ------------------------------------------------------------------
+      AFRAME.registerComponent('photo-billboard', {
+        schema: {
+          above: { type: 'string' },
+          below: { type: 'string' },
+          growth: { type: 'number', default: 0.5 }
+        },
+        init: function () {
+          this.aboveSprite = null;
+          this.belowSprite = null;
+
+          this.loadRoundTexture(this.data.above).then((texture) => {
+            this.aboveSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+            this.el.setObject3D('above-sprite', this.aboveSprite);
+            this.updateScales();
+          });
+
+          this.loadRoundTexture(this.data.below).then((texture) => {
+            this.belowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true }));
+            this.el.setObject3D('below-sprite', this.belowSprite);
+            this.updateScales();
+          });
+        },
+        update: function () {
+          this.updateScales();
+        },
+        updateScales: function () {
+          const g = Math.min(Math.max(this.data.growth, 0), 1);
+
+          if (this.aboveSprite) {
+            // 地上部の茎葉：土の表面(y≈0.1)から生えて、収穫期にかけて大きく育つ
+            const s = 0.25 + g * 0.55;
+            this.aboveSprite.scale.set(s, s, 1);
+            this.aboveSprite.position.set(0, 0.08 + s * 0.4, 0);
+          }
+          if (this.belowSprite) {
+            // 地下部の芋・さや：土の中(y=0〜0.1)にとどめつつ、サイズだけを
+            // 後半に急激に膨らませる（生育カーブをg^2で表現）ことで
+            // 「土からせり出してくる」見え方にする
+            const gg = g * g;
+            const s = 0.06 + gg * 0.42;
+            this.belowSprite.scale.set(s, s * 0.75, 1);
+            this.belowSprite.position.set(0, 0.05 + s * 0.05, 0);
+          }
+        },
+        loadRoundTexture: function (url) {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const size = 256;
+              const canvas = document.createElement('canvas');
+              canvas.width = size;
+              canvas.height = size;
+              const ctx = canvas.getContext('2d');
+              ctx.save();
+              ctx.beginPath();
+              ctx.ellipse(size / 2, size / 2, size * 0.48, size * 0.42, 0, 0, Math.PI * 2);
+              ctx.clip();
+              const scale = Math.max(size / img.width, size / img.height);
+              const w = img.width * scale, h = img.height * scale;
+              ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+              ctx.restore();
+              resolve(new THREE.CanvasTexture(canvas));
+            };
+            img.onerror = () => {
+              console.error('作物写真の読み込みに失敗しました', url);
+              resolve(null);
+            };
+            img.src = url;
+          });
         }
       });
 
@@ -237,6 +379,8 @@
         ridgeEl.setAttribute('data-planted-date', ridge.plantedDate);
         ridgeEl.setAttribute('data-status', ridge.status);
 
+        const growth = computeGrowth(ridge);
+
         // 畝（固定畝・不耕起栽培の土台）
         const soil = document.createElement('a-box');
         soil.setAttribute('position', '0 0.05 0');
@@ -247,43 +391,45 @@
         soil.setAttribute('shadow', 'receive: true; cast: false');
         ridgeEl.appendChild(soil);
 
-        // 日本語看板
+        // 日本語看板（品種／ステータス／収穫予測＋生育バー）
         const label = document.createElement('a-entity');
         label.setAttribute('position', '0 1.3 2.5');
         label.setAttribute(
           'jp-text',
-          `title: 畝${String(ridge.ridgeNo).padStart(2, '0')}: ${ridge.variety}; subtitle: ${ridge.status}（定植 ${ridge.plantedDate}）; color: ${ridge.labelColor}`
+          `title: 畝${String(ridge.ridgeNo).padStart(2, '0')}: ${ridge.variety};` +
+          `subtitle: ${ridge.status}（定植 ${ridge.plantedDate}）;` +
+          `harvest: ${growth.harvestLabel};` +
+          `progress: ${growth.progress};` +
+          `color: ${ridge.labelColor}`
         );
         ridgeEl.appendChild(label);
 
-        // 作物オブジェクト（将来.glbに差し替え可能な構造）
-        ITEM_Z_POSITIONS.forEach((z) => {
+        // 作物オブジェクト：写真ビルボード（地上部＋地下部）。modelUrl設定時は本物の.glbに差し替え
+        ITEM_Z_POSITIONS.forEach((z, index) => {
           const itemWrap = document.createElement('a-entity');
-          const baseY = 0.4;
+          const baseY = 0;
+          // 株ごとに生育のばらつきを少し持たせる（±5%）
+          const jitter = 1 + (((index * 37 + ridge.ridgeNo * 13) % 10) - 5) / 100;
+          const itemGrowth = Math.min(Math.max(growth.progress * jitter, 0), 1);
+
           itemWrap.setAttribute('position', `0 ${baseY} ${z}`);
-          itemWrap.setAttribute('shadow', 'cast: true; receive: false');
-          // 浮遊アニメーション（自転 + 上下バウンド）
-          itemWrap.setAttribute(
-            'animation__spin',
-            `property: rotation; to: 0 360 0; loop: true; dur: ${ridge.animDurMs}; easing: linear`
-          );
+          // ゆったりとした上下の揺れ（地上部の茎葉だけがそよぐ質感付け。地下部の位置は photo-billboard 側で固定）
           itemWrap.setAttribute(
             'animation__bob',
-            `property: position; to: 0 ${(baseY + 0.12).toFixed(2)} ${z}; dir: alternate; loop: true; dur: ${ridge.animDurMs / 2}; easing: easeInOutSine`
+            `property: position; to: 0 ${(baseY + 0.03).toFixed(2)} ${z}; dir: alternate; loop: true; dur: 4000; easing: easeInOutSine`
           );
 
           if (ridge.modelUrl) {
             // 外部.glbモデルがある場合はそちらを使用
             itemWrap.setAttribute('gltf-model', `#${ridge.modelId}`);
             itemWrap.setAttribute('scale', ridge.modelScale);
+            itemWrap.setAttribute('shadow', 'cast: true; receive: false');
           } else {
-            // 未設定の間はプレースホルダー図形にフォールバック
-            const prim = document.createElement(ridge.fallback.tag);
-            Object.entries(ridge.fallback.attrs).forEach(([key, value]) => {
-              prim.setAttribute(key, value);
-            });
-            prim.setAttribute('shadow', 'cast: true; receive: false');
-            itemWrap.appendChild(prim);
+            // 未設定の間は実写真ベースのビルボードで代用（地上の茎葉＋地中の芋・さやが時系列で育つ）
+            itemWrap.setAttribute(
+              'photo-billboard',
+              `above: ${ridge.photos.above}; below: ${ridge.photos.below}; growth: ${itemGrowth}`
+            );
           }
           ridgeEl.appendChild(itemWrap);
         });
@@ -340,7 +486,8 @@
       <a-assets timeout="5000"></a-assets>
 
       <!-- 通路視点。スマホを傾けると視点も動く（magicWindowTrackingEnabled） -->
-      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true" twofinger-pan></a-entity>
+      <!-- touchEnabled: false でlook-controls自身のタッチドラッグ回転を無効化し、2本指パンと競合しないようにする -->
+      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" twofinger-pan></a-entity>
 
       <a-light light="type: ambient; color: #FFFFFF; intensity: 0.7"></a-light>
       <a-light
