@@ -21,7 +21,7 @@
       //    パスが変わるため使用しない。
       // ------------------------------------------------------------------
       const FIELD_DEPTH = 7.0;                 // 畝の奥行き(m)
-      const ITEM_Z_POSITIONS = [0]; // 畝1本につき1箇所だけ配置
+      const ITEM_Z_POSITIONS = [2.5]; // 畝1本につき1箇所、看板と同じく手前側（通路に近い側）に配置
 
       // ------------------------------------------------------------------
       // 作物ごとの生育タイムライン（現状はWikimedia Commonsのフリー素材で代用）。
@@ -486,6 +486,8 @@
           itemWrap.setAttribute('position', `0 ${baseY} ${z}`);
           itemWrap.setAttribute('data-ridge-no', ridge.ridgeNo);
           itemWrap.setAttribute('data-jitter', jitter);
+          itemWrap.setAttribute('class', 'tappable');
+          itemWrap.addEventListener('click', () => openLightbox(ridge.ridgeNo));
           // ゆったりとした上下の揺れ（地上部の茎葉だけがそよぐ質感付け。地下部の位置は photo-billboard 側で固定）
           itemWrap.setAttribute(
             'animation__bob',
@@ -546,6 +548,7 @@
         });
         const readout = document.querySelector('#day-readout');
         if (readout) readout.textContent = `定植から ${day}日目`;
+        updateLightboxIfOpen();
       }
 
       function initTimeSlider() {
@@ -560,9 +563,52 @@
         slider.addEventListener('input', (e) => applyTimeSliderDay(parseInt(e.target.value, 10)));
       }
 
+      // ------------------------------------------------------------------
+      // ライトボックス：作物写真をタップすると、丸トリミングを解除した元画像を
+      // 拡大表示する。開いたままタイムスライダーを動かすと、その拡大画像も
+      // 選択中の生育段階に合わせて切り替わる。
+      // ------------------------------------------------------------------
+      let lightboxRidgeNo = null;
+
+      function currentSliderDay() {
+        const slider = document.querySelector('#day-slider');
+        return slider ? parseInt(slider.value, 10) : 0;
+      }
+
+      function openLightbox(ridgeNo) {
+        const ridge = ridgeData.find((r) => r.ridgeNo === ridgeNo);
+        if (!ridge || ridge.modelUrl) return;
+        lightboxRidgeNo = ridgeNo;
+        updateLightboxIfOpen();
+        document.querySelector('#lightbox').style.display = 'flex';
+      }
+
+      function closeLightbox() {
+        lightboxRidgeNo = null;
+        document.querySelector('#lightbox').style.display = 'none';
+      }
+
+      function updateLightboxIfOpen() {
+        if (lightboxRidgeNo === null) return;
+        const ridge = ridgeData.find((r) => r.ridgeNo === lightboxRidgeNo);
+        if (!ridge) return;
+        const stage = pickStage(ridge, currentSliderDay());
+        document.querySelector('#lightbox-img').src = stage.above;
+        document.querySelector('#lightbox-caption').textContent =
+          `畝${String(ridge.ridgeNo).padStart(2, '0')}: ${ridge.variety}｜${stage.label}`;
+      }
+
+      function initLightbox() {
+        document.querySelector('#lightbox-close').addEventListener('click', closeLightbox);
+        document.querySelector('#lightbox').addEventListener('click', (e) => {
+          if (e.target.id === 'lightbox') closeLightbox(); // 背景タップで閉じる
+        });
+      }
+
       document.addEventListener('DOMContentLoaded', initFarmScene);
       document.addEventListener('DOMContentLoaded', initCameraPassthrough);
       document.addEventListener('DOMContentLoaded', initTimeSlider);
+      document.addEventListener('DOMContentLoaded', initLightbox);
     </script>
   </head>
 
@@ -592,7 +638,9 @@
 
       <!-- 通路視点。スマホを傾けると視点も動く（magicWindowTrackingEnabled） -->
       <!-- touchEnabled: false でlook-controls自身のタッチドラッグ回転を無効化し、2本指パンと競合しないようにする -->
-      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" twofinger-pan></a-entity>
+      <!-- cursor(rayOrigin: mouse) でタップした位置に向けてレイキャストし、作物写真のタップ判定を取る -->
+      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" twofinger-pan
+        cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .tappable; far: 20"></a-entity>
 
       <a-light light="type: ambient; color: #FFFFFF; intensity: 0.7"></a-light>
       <a-light
@@ -619,6 +667,13 @@
       </div>
       <input id="day-slider" type="range" min="0" max="150" value="60" step="1"
         style="width: 100%; touch-action: auto;">
+    </div>
+
+    <!-- ライトボックス：写真をタップすると丸トリミングを解除した元画像を拡大表示。タイムスライダーは開いたまま操作できる -->
+    <div id="lightbox" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 66px; z-index: 5; background: rgba(0,0,0,0.88); align-items: center; justify-content: center; flex-direction: column; touch-action: auto;">
+      <button id="lightbox-close" style="position: absolute; top: 12px; right: 16px; width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: #fff; font-size: 20px; touch-action: auto;">✕</button>
+      <img id="lightbox-img" style="max-width: 92%; max-height: 78%; object-fit: contain; border-radius: 8px;">
+      <div id="lightbox-caption" style="color: #fff; margin-top: 12px; font-family: -apple-system, 'Hiragino Kaku Gothic ProN', sans-serif; font-size: 15px;"></div>
     </div>
   </body>
 </html>
