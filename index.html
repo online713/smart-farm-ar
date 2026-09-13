@@ -77,7 +77,7 @@
 
       const ridgeData = [
         {
-          ridgeNo: 1, posX: -3.75,
+          ridgeNo: 1, posX: -1.5,
           crop: "ジャガイモ", variety: "デジマ",
           plantedDate: "2026-03-10", status: "収穫間近",
           soilColor: "#3E2723", labelColor: "#D81B60",
@@ -86,44 +86,20 @@
           modelUrl: null, modelId: "model-potato-degima", modelScale: "1 1 1"
         },
         {
-          ridgeNo: 2, posX: -2.25,
-          crop: "ジャガイモ", variety: "ニシユタカ",
-          plantedDate: "2026-03-10", status: "生育中",
-          soilColor: "#3E2723", labelColor: "#F57F17",
-          photos: CROP_PHOTOS.potato,
-          modelUrl: null, modelId: "model-potato-nishiyutaka", modelScale: "1 1 1"
-        },
-        {
-          ridgeNo: 3, posX: -0.75,
-          crop: "落花生（大粒）", variety: "おおまさりネオ",
+          ridgeNo: 2, posX: 0,
+          crop: "落花生", variety: "おおまさりネオ",
           plantedDate: "2026-05-10", status: "開花期",
           soilColor: "#212121", labelColor: "#2E7D32",
           photos: CROP_PHOTOS.peanut,
           modelUrl: null, modelId: "model-peanut-oomasari", modelScale: "1 1 1"
         },
         {
-          ridgeNo: 4, posX: 0.75,
-          crop: "落花生", variety: "千葉半立",
-          plantedDate: "2026-05-10", status: "子房柄伸長中",
-          soilColor: "#212121", labelColor: "#388E3C",
-          photos: CROP_PHOTOS.peanut,
-          modelUrl: null, modelId: "model-peanut-chibahandachi", modelScale: "1 1 1"
-        },
-        {
-          ridgeNo: 5, posX: 2.25,
-          crop: "サツマイモ", variety: "早植え株",
+          ridgeNo: 3, posX: 1.5,
+          crop: "サツマイモ", variety: "べにはるか",
           plantedDate: "2026-05-02", status: "蔓繁茂",
           soilColor: "#3E2723", labelColor: "#880E4F",
           photos: CROP_PHOTOS.sweetpotato,
-          modelUrl: null, modelId: "model-sweetpotato-early", modelScale: "1 1 1"
-        },
-        {
-          ridgeNo: 6, posX: 3.75,
-          crop: "サツマイモ", variety: "遅植え株",
-          plantedDate: "2026-05-20", status: "活着期",
-          soilColor: "#3E2723", labelColor: "#C2185B",
-          photos: CROP_PHOTOS.sweetpotato,
-          modelUrl: null, modelId: "model-sweetpotato-late", modelScale: "1 1 1"
+          modelUrl: null, modelId: "model-sweetpotato", modelScale: "1 1 1"
         }
       ];
 
@@ -604,6 +580,43 @@
         });
       }
 
+      // 拡大写真を左右にスワイプすると、次/前の生育段階に切り替わる（Googleストリートビューの日付送りと同じ感覚）
+      function stepLightboxStage(direction) {
+        if (lightboxRidgeNo === null) return;
+        const ridge = ridgeData.find((r) => r.ridgeNo === lightboxRidgeNo);
+        if (!ridge || ridge.modelUrl) return;
+        const stages = ridge.photos.aboveStages;
+        const day = currentSliderDay();
+        let idx = 0;
+        for (let i = 0; i < stages.length; i++) {
+          if (stages[i].day <= day) idx = i;
+        }
+        const newIdx = Math.max(0, Math.min(stages.length - 1, idx + direction));
+        const newDay = stages[newIdx].day;
+        const slider = document.querySelector('#day-slider');
+        if (slider) slider.value = newDay;
+        applyTimeSliderDay(newDay);
+      }
+
+      function initLightboxSwipe() {
+        const lightboxEl = document.querySelector('#lightbox');
+        let start = null;
+        lightboxEl.addEventListener('touchstart', (e) => {
+          start = e.touches.length === 1
+            ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+            : null;
+        }, { passive: true });
+        lightboxEl.addEventListener('touchend', (e) => {
+          if (!start || e.changedTouches.length !== 1) { start = null; return; }
+          const dx = e.changedTouches[0].clientX - start.x;
+          const dy = e.changedTouches[0].clientY - start.y;
+          start = null;
+          // 横方向に十分大きく動いた場合だけスワイプとみなす（縦の指ブレは無視）
+          if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+          stepLightboxStage(dx < 0 ? 1 : -1); // 左スワイプ＝次の段階、右スワイプ＝前の段階
+        }, { passive: true });
+      }
+
       // ------------------------------------------------------------------
       // 作物写真のタップ検知（自前実装）。
       // A-Frameのcursor/raycasterコンポーネントはスプライトに対する
@@ -659,6 +672,7 @@
       document.addEventListener('DOMContentLoaded', initCameraPassthrough);
       document.addEventListener('DOMContentLoaded', initTimeSlider);
       document.addEventListener('DOMContentLoaded', initLightbox);
+      document.addEventListener('DOMContentLoaded', initLightboxSwipe);
       document.addEventListener('DOMContentLoaded', initTapToZoom);
       document.addEventListener('DOMContentLoaded', initSpriteRaycastFix);
     </script>
