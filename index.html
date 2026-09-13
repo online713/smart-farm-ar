@@ -300,8 +300,8 @@
         },
         updateScales: function () {
           // サイズは生育度によらず固定。時系列スライダーでは「写真の切り替え」だけで表現する
-          const ABOVE_SIZE = 0.5;
-          const BELOW_SIZE = 0.3;
+          const ABOVE_SIZE = 1.1;
+          const BELOW_SIZE = 0.7;
 
           if (this.aboveSprite) {
             this.aboveSprite.scale.set(ABOVE_SIZE, ABOVE_SIZE, 1);
