@@ -23,24 +23,57 @@
       const FIELD_DEPTH = 7.0;                 // 畝の奥行き(m)
       const ITEM_Z_POSITIONS = [2.0, 0.5, -1.0, -2.5]; // 通路側から奥に向けた配置点
 
-      // 作物ごとの地上部・地下部の写真（Wikimedia Commonsのフリー素材）と収穫までの目安日数
+      // ------------------------------------------------------------------
+      // 作物ごとの生育タイムライン（現状はWikimedia Commonsのフリー素材で代用）。
+      // aboveStages: 経過日数(day)ごとの地上部の見た目の切り替え点。
+      //   note は将来「自分で撮った写真＋その日のメモ」に差し替えるための場所（今は空）。
+      // below: 地下部（芋・さや）は1枚の代表写真をスケールだけ変えて使い回す。
+      // TODO: 将来的には aboveStages / below を自分で撮影した写真＋撮影日＋メモの
+      //       配列（GitHubリポジトリの photos/ 以下）に置き換える。
+      // ------------------------------------------------------------------
       const CROP_PHOTOS = {
         potato: {
-          above: 'https://upload.wikimedia.org/wikipedia/commons/1/12/Potato_plant.jpg',
+          aboveStages: [
+            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/7/7a/Aardappel_Dor%C3%A9_poters_%28Solanum_tuberosum_seed_potatoes%29.jpg', label: '定植（種芋）', note: '' },
+            { day: 25, url: 'https://upload.wikimedia.org/wikipedia/commons/9/94/Potato_sprouts.jpg', label: '発芽', note: '' },
+            { day: 55, url: 'https://upload.wikimedia.org/wikipedia/commons/1/12/Potato_plant.jpg', label: '生育期', note: '' }
+          ],
           below: 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Potatoes.jpg',
           daysToHarvest: 95
         },
         peanut: {
-          above: 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Peanut_9417.jpg',
+          aboveStages: [
+            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/Organic_peanut_seeds.jpg', label: '播種', note: '' },
+            { day: 30, url: 'https://upload.wikimedia.org/wikipedia/commons/0/04/Seedling_planting.jpg', label: '発芽（イメージ）', note: '' },
+            { day: 70, url: 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Peanut_9417.jpg', label: '開花・莢形成期', note: '' }
+          ],
           below: 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Peanuts_%28Arachis_hypogaea%29_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_peeled.jpg',
           daysToHarvest: 135
         },
         sweetpotato: {
-          above: 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Ipomoea_batatas_leaf.jpg',
+          aboveStages: [
+            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/Sweet_potato_sprouting_slips.jpg', label: '苗（挿し苗）定植', note: '' },
+            { day: 40, url: 'https://upload.wikimedia.org/wikipedia/commons/4/43/Sweet_potato_field_in_Namegata%2C_Ibaraki_07.jpg', label: '蔓の伸長', note: '' },
+            { day: 90, url: 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Ipomoea_batatas_leaf.jpg', label: '繁茂期', note: '' }
+          ],
           below: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Sweet_potatoes.JPG',
           daysToHarvest: 140
         }
       };
+
+      const TIME_SLIDER_MAX_DAY = 150;
+
+      // 経過日数(day)から、その時点で表示すべき地上部ステージを選ぶ（Googleストリートビューの
+      // 「過去の画像」選択と同じ考え方：指定日以前で一番新しいステージを採用）
+      function pickStage(ridge, day) {
+        const stages = ridge.photos.aboveStages;
+        let chosen = stages[0];
+        for (const s of stages) {
+          if (s.day <= day) chosen = s; else break;
+        }
+        const growth = Math.min(Math.max(day / ridge.photos.daysToHarvest, 0), 1);
+        return { above: chosen.url, below: ridge.photos.below, growth, label: chosen.label, note: chosen.note };
+      }
 
       const ridgeData = [
         {
@@ -116,6 +149,7 @@
           : `収穫適期 ${harvestDateLabel}（収穫可能）`;
         return {
           progress,
+          daysSince: Math.max(daysSince, 0),
           harvestDateLabel,
           daysUntilHarvest,
           harvestLabel
@@ -208,6 +242,8 @@
       // 将来的に本物の.glbモデルに差し替える場合は、呼び出し側でこの
       // コンポーネントの代わりに gltf-model を使う分岐に切り替えればよい。
       // ------------------------------------------------------------------
+      const PHOTO_TEXTURE_CACHE = new Map(); // 同じ写真URLの再読み込みを避けるキャッシュ
+
       AFRAME.registerComponent('photo-billboard', {
         schema: {
           above: { type: 'string' },
@@ -217,21 +253,50 @@
         init: function () {
           this.aboveSprite = null;
           this.belowSprite = null;
-
-          this.loadRoundTexture(this.data.above).then((texture) => {
-            this.aboveSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
-            this.el.setObject3D('above-sprite', this.aboveSprite);
-            this.updateScales();
-          });
-
-          this.loadRoundTexture(this.data.below).then((texture) => {
-            this.belowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true }));
-            this.el.setObject3D('below-sprite', this.belowSprite);
-            this.updateScales();
-          });
+          this.currentAbove = null;
+          this.currentBelow = null;
+          this.setAbove(this.data.above);
+          this.setBelow(this.data.below);
         },
         update: function () {
           this.updateScales();
+        },
+        // タイムスライダーからの呼び出し用：地上部の写真・地下部の写真・生育度をまとめて切り替える
+        applyStage: function (aboveUrl, belowUrl, growth) {
+          this.data.growth = growth;
+          this.setAbove(aboveUrl);
+          this.setBelow(belowUrl);
+          this.updateScales();
+        },
+        setAbove: function (url) {
+          if (!url || url === this.currentAbove) return;
+          this.currentAbove = url;
+          this.loadRoundTexture(url).then((texture) => {
+            if (this.currentAbove !== url) return; // 読み込み中にさらに切り替わっていたら破棄
+            if (this.aboveSprite) {
+              this.aboveSprite.material.map = texture;
+              this.aboveSprite.material.needsUpdate = true;
+            } else {
+              this.aboveSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+              this.el.setObject3D('above-sprite', this.aboveSprite);
+            }
+            this.updateScales();
+          });
+        },
+        setBelow: function (url) {
+          if (!url || url === this.currentBelow) return;
+          this.currentBelow = url;
+          this.loadRoundTexture(url).then((texture) => {
+            if (this.currentBelow !== url) return;
+            if (this.belowSprite) {
+              this.belowSprite.material.map = texture;
+              this.belowSprite.material.needsUpdate = true;
+            } else {
+              this.belowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true }));
+              this.el.setObject3D('below-sprite', this.belowSprite);
+            }
+            this.updateScales();
+          });
         },
         updateScales: function () {
           const g = Math.min(Math.max(this.data.growth, 0), 1);
@@ -253,7 +318,10 @@
           }
         },
         loadRoundTexture: function (url) {
-          return new Promise((resolve) => {
+          if (PHOTO_TEXTURE_CACHE.has(url)) {
+            return PHOTO_TEXTURE_CACHE.get(url);
+          }
+          const promise = new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
             img.onload = () => {
@@ -278,6 +346,8 @@
             };
             img.src = url;
           });
+          PHOTO_TEXTURE_CACHE.set(url, promise);
+          return promise;
         }
       });
 
@@ -416,9 +486,10 @@
           const baseY = 0;
           // 株ごとに生育のばらつきを少し持たせる（±5%）
           const jitter = 1 + (((index * 37 + ridge.ridgeNo * 13) % 10) - 5) / 100;
-          const itemGrowth = Math.min(Math.max(growth.progress * jitter, 0), 1);
 
           itemWrap.setAttribute('position', `0 ${baseY} ${z}`);
+          itemWrap.setAttribute('data-ridge-no', ridge.ridgeNo);
+          itemWrap.setAttribute('data-jitter', jitter);
           // ゆったりとした上下の揺れ（地上部の茎葉だけがそよぐ質感付け。地下部の位置は photo-billboard 側で固定）
           itemWrap.setAttribute(
             'animation__bob',
@@ -431,10 +502,11 @@
             itemWrap.setAttribute('scale', ridge.modelScale);
             itemWrap.setAttribute('shadow', 'cast: true; receive: false');
           } else {
-            // 未設定の間は実写真ベースのビルボードで代用（地上の茎葉＋地中の芋・さやが時系列で育つ）
+            // 未設定の間は実写真ベースのビルボードで代用。初期表示は「実際の定植日からの経過日数」に基づく
+            const stage = pickStage(ridge, growth.daysSince * jitter);
             itemWrap.setAttribute(
               'photo-billboard',
-              `above: ${ridge.photos.above}; below: ${ridge.photos.below}; growth: ${itemGrowth}`
+              `above: ${stage.above}; below: ${stage.below}; growth: ${stage.growth}`
             );
           }
           ridgeEl.appendChild(itemWrap);
@@ -462,8 +534,39 @@
         });
       }
 
+      // ------------------------------------------------------------------
+      // 時系列タイムスライダー（Googleストリートビューの「過去の画像」風に、
+      // 定植からの経過日数をスクラブして全畝の見た目を一括で切り替える）
+      // ------------------------------------------------------------------
+      function applyTimeSliderDay(day) {
+        document.querySelectorAll('#farm-root [data-ridge-no]').forEach((el) => {
+          const ridgeNo = parseInt(el.getAttribute('data-ridge-no'), 10);
+          const jitter = parseFloat(el.getAttribute('data-jitter')) || 1;
+          const ridge = ridgeData.find((r) => r.ridgeNo === ridgeNo);
+          if (!ridge || ridge.modelUrl) return;
+          const stage = pickStage(ridge, day * jitter);
+          const comp = el.components && el.components['photo-billboard'];
+          if (comp) comp.applyStage(stage.above, stage.below, stage.growth);
+        });
+        const readout = document.querySelector('#day-readout');
+        if (readout) readout.textContent = `定植から ${day}日目`;
+      }
+
+      function initTimeSlider() {
+        const slider = document.querySelector('#day-slider');
+        if (!slider) return;
+        // 初期値：各畝の実際の経過日数の中央値に近い値にしておく（見た目のジャンプを減らすため）
+        const daysList = ridgeData.map((r) => Math.min(computeGrowth(r).daysSince, TIME_SLIDER_MAX_DAY));
+        daysList.sort((a, b) => a - b);
+        const initialDay = Math.round(daysList[Math.floor(daysList.length / 2)] || 60);
+        slider.value = initialDay;
+        document.querySelector('#day-readout').textContent = `定植から ${initialDay}日目`;
+        slider.addEventListener('input', (e) => applyTimeSliderDay(parseInt(e.target.value, 10)));
+      }
+
       document.addEventListener('DOMContentLoaded', initFarmScene);
       document.addEventListener('DOMContentLoaded', initCameraPassthrough);
+      document.addEventListener('DOMContentLoaded', initTimeSlider);
     </script>
   </head>
 
@@ -506,5 +609,20 @@
         <a-entity shadow-ground="width: 10; depth: 10" position="0 0 -4.5"></a-entity>
       </a-entity>
     </a-scene>
+
+    <!--
+      時系列タイムスライダー（Googleストリートビューの「過去の画像」風UI）。
+      touch-action: auto でこの要素だけは通常のタッチ操作（スライダー操作）を許可する。
+      TODO: 将来、自分で撮影した写真をアップロードする段になったら、
+            このバーに「この日の写真を追加」ボタンを追加する想定。
+    -->
+    <div style="position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; background: rgba(0,0,0,0.55); color: #fff; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); font-family: -apple-system, 'Hiragino Kaku Gothic ProN', sans-serif; touch-action: auto;">
+      <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; opacity: 0.9;">
+        <span>生育タイムトラベル</span>
+        <span id="day-readout">定植から 0日目</span>
+      </div>
+      <input id="day-slider" type="range" min="0" max="150" value="60" step="1"
+        style="width: 100%; touch-action: auto;">
+    </div>
   </body>
 </html>
