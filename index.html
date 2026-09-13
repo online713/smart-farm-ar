@@ -34,30 +34,33 @@
       const CROP_PHOTOS = {
         potato: {
           aboveStages: [
-            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/7/7a/Aardappel_Dor%C3%A9_poters_%28Solanum_tuberosum_seed_potatoes%29.jpg', label: '定植（種芋）', note: '' },
-            { day: 20, url: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Potato_sprouts.jpg', label: '発芽', note: '' },
-            { day: 45, url: 'https://upload.wikimedia.org/wikipedia/commons/d/df/Solanum_tuberosum_flower.JPG', label: '開花期', note: '' },
-            { day: 70, url: 'https://upload.wikimedia.org/wikipedia/commons/1/12/Potato_plant.jpg', label: '生育後期', note: '' }
+            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/7/7a/Aardappel_Dor%C3%A9_poters_%28Solanum_tuberosum_seed_potatoes%29.jpg', label: '定植（種芋）', note: '畝立て・種芋の植え付け' },
+            { day: 20, url: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Potato_sprouts.jpg', label: '発芽', note: '芽かき（生育の良い芽を2〜3本残す）' },
+            { day: 45, url: 'https://upload.wikimedia.org/wikipedia/commons/d/df/Solanum_tuberosum_flower.JPG', label: '開花期', note: '追肥・土寄せ' },
+            { day: 70, url: 'https://upload.wikimedia.org/wikipedia/commons/1/12/Potato_plant.jpg', label: '生育後期', note: '枯れ葉の除去・排水確認' },
+            { day: 95, url: 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Potatoes.jpg', label: '収穫', note: '掘り出し・乾燥' }
           ],
           below: 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Potatoes.jpg',
           daysToHarvest: 95
         },
         peanut: {
           aboveStages: [
-            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/Organic_peanut_seeds.jpg', label: '播種', note: '' },
-            { day: 25, url: 'https://upload.wikimedia.org/wikipedia/commons/2/28/Peanut_Sprout.jpg', label: '発芽', note: '' },
-            { day: 55, url: 'https://upload.wikimedia.org/wikipedia/commons/6/64/Arachis_hypogaea_Flower.jpg', label: '開花期', note: '' },
-            { day: 85, url: 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Peanut_9417.jpg', label: '莢形成期', note: '' }
+            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/Organic_peanut_seeds.jpg', label: '播種', note: '畝立て・種まき' },
+            { day: 25, url: 'https://upload.wikimedia.org/wikipedia/commons/2/28/Peanut_Sprout.jpg', label: '発芽', note: '除草・間引き' },
+            { day: 55, url: 'https://upload.wikimedia.org/wikipedia/commons/6/64/Arachis_hypogaea_Flower.jpg', label: '開花期', note: '追肥・中耕' },
+            { day: 85, url: 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Peanut_9417.jpg', label: '莢形成期', note: '土寄せ（子房柄が土に入るように）' },
+            { day: 135, url: 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Peanuts_%28Arachis_hypogaea%29_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_peeled.jpg', label: '収穫', note: '株ごと掘り取り・乾燥' }
           ],
           below: 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Peanuts_%28Arachis_hypogaea%29_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_peeled.jpg',
           daysToHarvest: 135
         },
         sweetpotato: {
           aboveStages: [
-            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/Sweet_potato_sprouting_slips.jpg', label: '苗（挿し苗）定植', note: '' },
-            { day: 35, url: 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Ipomoea_batatas_leaf.jpg', label: '葉の展開', note: '' },
-            { day: 65, url: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Sweet_Potato_Flower_in_Full_bloom.jpg', label: '開花期', note: '' },
-            { day: 100, url: 'https://upload.wikimedia.org/wikipedia/commons/4/43/Sweet_potato_field_in_Namegata%2C_Ibaraki_07.jpg', label: '繁茂期', note: '' }
+            { day: 0, url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/Sweet_potato_sprouting_slips.jpg', label: '苗（挿し苗）定植', note: '畝立て・マルチ・挿し苗の定植' },
+            { day: 35, url: 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Ipomoea_batatas_leaf.jpg', label: '葉の展開', note: 'つる返し・除草' },
+            { day: 65, url: 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Sweet_Potato_Flower_in_Full_bloom.jpg', label: '開花期', note: '追肥（控えめ）・つる返し' },
+            { day: 100, url: 'https://upload.wikimedia.org/wikipedia/commons/4/43/Sweet_potato_field_in_Namegata%2C_Ibaraki_07.jpg', label: '繁茂期', note: 'つる返し・排水確認' },
+            { day: 140, url: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Sweet_potatoes.JPG', label: '収穫', note: '掘り取り・乾燥・貯蔵準備' }
           ],
           below: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Sweet_potatoes.JPG',
           daysToHarvest: 140
@@ -526,7 +529,7 @@
         });
         const readout = document.querySelector('#day-readout');
         if (readout) readout.textContent = `定植から ${day}日目`;
-        updateLightboxIfOpen();
+        // ライトボックスはメイン画面の日付とは独立して動くので、ここでは更新しない
       }
 
       function initTimeSlider() {
@@ -543,10 +546,12 @@
 
       // ------------------------------------------------------------------
       // ライトボックス：作物写真をタップすると、丸トリミングを解除した元画像を
-      // 拡大表示する。開いたままタイムスライダーを動かすと、その拡大画像も
-      // 選択中の生育段階に合わせて切り替わる。
+      // 拡大表示する。背後のメイン画面（今日時点の状態）とは独立していて、
+      // 開くたびに必ず一番古い状態（定植直後）から表示し、左右スワイプで
+      // 自分のペースで生育の記録をアルバムのようにめくれる。
       // ------------------------------------------------------------------
       let lightboxRidgeNo = null;
+      let lightboxDay = 0;
 
       function currentSliderDay() {
         const slider = document.querySelector('#day-slider');
@@ -557,6 +562,7 @@
         const ridge = ridgeData.find((r) => r.ridgeNo === ridgeNo);
         if (!ridge || ridge.modelUrl) return;
         lightboxRidgeNo = ridgeNo;
+        lightboxDay = 0; // 開くたびに一番古い状態から
         updateLightboxIfOpen();
         document.querySelector('#lightbox').style.display = 'flex';
       }
@@ -570,10 +576,12 @@
         if (lightboxRidgeNo === null) return;
         const ridge = ridgeData.find((r) => r.ridgeNo === lightboxRidgeNo);
         if (!ridge) return;
-        const stage = pickStage(ridge, currentSliderDay());
+        const stage = pickStage(ridge, lightboxDay);
         document.querySelector('#lightbox-img').src = stage.above;
         document.querySelector('#lightbox-caption').textContent =
           `畝${String(ridge.ridgeNo).padStart(2, '0')}: ${ridge.variety}｜${stage.label}`;
+        document.querySelector('#lightbox-note').textContent =
+          stage.note ? `作業記録: ${stage.note}` : '';
       }
 
       function initLightbox() {
@@ -583,22 +591,20 @@
         });
       }
 
-      // 拡大写真を左右にスワイプすると、次/前の生育段階に切り替わる（Googleストリートビューの日付送りと同じ感覚）
+      // 拡大写真を左右にスワイプすると、次/前の生育段階に切り替わる（Googleストリートビューの日付送りと同じ感覚）。
+      // これはライトボックス内だけの状態で、背後のメイン画面（下のタイムスライダー）には影響しない。
       function stepLightboxStage(direction) {
         if (lightboxRidgeNo === null) return;
         const ridge = ridgeData.find((r) => r.ridgeNo === lightboxRidgeNo);
         if (!ridge || ridge.modelUrl) return;
         const stages = ridge.photos.aboveStages;
-        const day = currentSliderDay();
         let idx = 0;
         for (let i = 0; i < stages.length; i++) {
-          if (stages[i].day <= day) idx = i;
+          if (stages[i].day <= lightboxDay) idx = i;
         }
         const newIdx = Math.max(0, Math.min(stages.length - 1, idx + direction));
-        const newDay = stages[newIdx].day;
-        const slider = document.querySelector('#day-slider');
-        if (slider) slider.value = newDay;
-        applyTimeSliderDay(newDay);
+        lightboxDay = stages[newIdx].day;
+        updateLightboxIfOpen();
       }
 
       function initLightboxSwipe() {
@@ -742,6 +748,8 @@
       <button id="lightbox-close" style="position: absolute; top: 12px; right: 16px; width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: #fff; font-size: 20px; touch-action: auto;">✕</button>
       <img id="lightbox-img" style="max-width: 92%; max-height: 78%; object-fit: contain; border-radius: 8px;">
       <div id="lightbox-caption" style="color: #fff; margin-top: 12px; font-family: -apple-system, 'Hiragino Kaku Gothic ProN', sans-serif; font-size: 15px;"></div>
+      <div id="lightbox-note" style="color: #ffd54f; margin-top: 4px; font-family: -apple-system, 'Hiragino Kaku Gothic ProN', sans-serif; font-size: 13px;"></div>
+      <div style="color: #999; margin-top: 10px; font-family: -apple-system, 'Hiragino Kaku Gothic ProN', sans-serif; font-size: 12px;">← スワイプで生育の記録をめくれます →</div>
     </div>
   </body>
 </html>
