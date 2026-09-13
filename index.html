@@ -486,8 +486,7 @@
           itemWrap.setAttribute('position', `0 ${baseY} ${z}`);
           itemWrap.setAttribute('data-ridge-no', ridge.ridgeNo);
           itemWrap.setAttribute('data-jitter', jitter);
-          itemWrap.setAttribute('class', 'tappable');
-          itemWrap.addEventListener('click', () => openLightbox(ridge.ridgeNo));
+          itemWrap.setAttribute('class', 'tappable'); // タップ検知(initTapToZoom)の対象マーカー
           // ゆったりとした上下の揺れ（地上部の茎葉だけがそよぐ質感付け。地下部の位置は photo-billboard 側で固定）
           itemWrap.setAttribute(
             'animation__bob',
@@ -605,10 +604,63 @@
         });
       }
 
+      // ------------------------------------------------------------------
+      // 作物写真のタップ検知（自前実装）。
+      // A-Frameのcursor/raycasterコンポーネントはスプライトに対する
+      // マウス系イベント連携が不安定なため、指1本の短いタップだけを
+      // 自前で判定し、THREE.Raycasterで直接スプライトに当たり判定を取る。
+      // ------------------------------------------------------------------
+      function initTapToZoom() {
+        const sceneEl = document.querySelector('a-scene');
+        let touchStart = null;
+
+        window.addEventListener('touchstart', (e) => {
+          touchStart = e.touches.length === 1
+            ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() }
+            : null;
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => {
+          if (!touchStart || e.changedTouches.length !== 1) { touchStart = null; return; }
+          const dx = e.changedTouches[0].clientX - touchStart.x;
+          const dy = e.changedTouches[0].clientY - touchStart.y;
+          const isTap = Math.hypot(dx, dy) < 12 && (Date.now() - touchStart.t) < 400;
+          const pos = touchStart;
+          touchStart = null;
+          if (isTap) handleTap(pos.x, pos.y);
+        }, { passive: true });
+
+        function handleTap(clientX, clientY) {
+          const camera = sceneEl.camera;
+          if (!camera) return;
+          const rect = sceneEl.canvas.getBoundingClientRect();
+          const ndc = new THREE.Vector2(
+            ((clientX - rect.left) / rect.width) * 2 - 1,
+            -((clientY - rect.top) / rect.height) * 2 + 1
+          );
+          const raycaster = new THREE.Raycaster();
+          raycaster.camera = camera; // THREE.Sprite の当たり判定にはcameraの明示指定が必須
+          raycaster.setFromCamera(ndc, camera);
+          const targets = Array.from(document.querySelectorAll('.tappable')).map((el) => el.object3D);
+          const hits = raycaster.intersectObjects(targets, true);
+          if (!hits.length) return;
+          let obj = hits[0].object;
+          while (obj) {
+            if (obj.el && obj.el.hasAttribute && obj.el.hasAttribute('data-ridge-no')) {
+              openLightbox(parseInt(obj.el.getAttribute('data-ridge-no'), 10));
+              return;
+            }
+            obj = obj.parent;
+          }
+        }
+      }
+
       document.addEventListener('DOMContentLoaded', initFarmScene);
       document.addEventListener('DOMContentLoaded', initCameraPassthrough);
       document.addEventListener('DOMContentLoaded', initTimeSlider);
       document.addEventListener('DOMContentLoaded', initLightbox);
+      document.addEventListener('DOMContentLoaded', initTapToZoom);
+      document.addEventListener('DOMContentLoaded', initSpriteRaycastFix);
     </script>
   </head>
 
@@ -638,9 +690,8 @@
 
       <!-- 通路視点。スマホを傾けると視点も動く（magicWindowTrackingEnabled） -->
       <!-- touchEnabled: false でlook-controls自身のタッチドラッグ回転を無効化し、2本指パンと競合しないようにする -->
-      <!-- cursor(rayOrigin: mouse) でタップした位置に向けてレイキャストし、作物写真のタップ判定を取る -->
-      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" twofinger-pan
-        cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .tappable; far: 20"></a-entity>
+      <!-- 作物写真のタップ判定はinitTapToZoom()が自前のTHREE.Raycasterで行う（cursor/raycasterコンポーネントは不使用） -->
+      <a-entity camera position="0 1.6 1.5" look-controls="magicWindowTrackingEnabled: true; touchEnabled: false" twofinger-pan></a-entity>
 
       <a-light light="type: ambient; color: #FFFFFF; intensity: 0.7"></a-light>
       <a-light
