@@ -309,11 +309,14 @@
           });
           window.addEventListener('touchstart', (e) => {
             if (e.touches.length === 2) {
+              e.preventDefault();
               this.lastCenter = getCenter(e.touches);
             }
-          });
+          }, { passive: false });
           window.addEventListener('touchmove', (e) => {
             if (e.touches.length !== 2 || !this.lastCenter) return;
+            // iOS Safariがuser-scalable=noを無視してページ自体をズーム/パンしようとするのを止める
+            e.preventDefault();
             const center = getCenter(e.touches);
             const dx = center.x - this.lastCenter.x;
             const dy = center.y - this.lastCenter.y;
@@ -329,10 +332,10 @@
             const pos = this.el.object3D.position;
             pos.addScaledVector(right, dx * this.data.speed);
             pos.addScaledVector(forward, -dy * this.data.speed);
-          });
+          }, { passive: false });
           window.addEventListener('touchend', (e) => {
             if (e.touches.length < 2) this.lastCenter = null;
-          });
+          }, { passive: false });
         }
       });
 
@@ -350,20 +353,23 @@
           );
           window.addEventListener('touchstart', (e) => {
             if (e.touches.length === 2) {
+              e.preventDefault();
               this.initialDist = dist(e.touches);
               this.initialScale = this.el.object3D.scale.x;
             }
-          });
+          }, { passive: false });
           window.addEventListener('touchmove', (e) => {
             if (e.touches.length === 2 && this.initialDist > 0) {
+              // iOS Safariがuser-scalable=noを無視してページ自体をズームしようとするのを止める
+              e.preventDefault();
               const factor = dist(e.touches) / this.initialDist;
               const s = Math.min(Math.max(this.initialScale * factor, this.data.min), this.data.max);
               this.el.object3D.scale.set(s, s, s);
             }
-          });
+          }, { passive: false });
           window.addEventListener('touchend', (e) => {
             if (e.touches.length < 2) this.initialDist = 0;
-          });
+          }, { passive: false });
         }
       });
 
@@ -461,7 +467,7 @@
     </script>
   </head>
 
-  <body style="margin: 0; overflow: hidden; background: #000;">
+  <body style="margin: 0; overflow: hidden; background: #000; touch-action: none;">
     <!--
       簡易パススルーAR（マーカー・GPSなし版）:
       背面カメラの映像を全画面の<video>として敷き、その上に透明背景の
